@@ -1,0 +1,18 @@
+# Documentary Pipeline Configuration
+# Edit this file to customize your documentary
+
+topic: "The History of Artificial Intelligence"
+num_scenes: 6
+resolution: "1024x576"
+fps: 24
+
+# Video motion: true = use SVD for actual video clips (slower, needs more VRAM)
+#              false = use Ken Burns effect on still images (faster)
+enable_video_motion: false
+
+# TTS settings
+tts_engine: "edge_tts"   # edge_tts or kokoro
+voice: "en-US-GuyNeural" # en-US-GuyNeural, en-US-JennyNeural, etc.
+
+# Output directory
+output_dir: "./output"

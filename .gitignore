@@ -1,0 +1,23 @@
+# Output
+output/
+output_test/
+test_output/
+
+# Cache
+hf_cache/
+hf_cache_test/
+__pycache__/
+*.pyc
+
+# Environment
+.env
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
