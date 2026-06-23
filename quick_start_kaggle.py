@@ -19,7 +19,7 @@ ENABLE_MOTION = False     # True = SVD video, False = Ken Burns
 VOICE = "en-US-GuyNeural" # Edge-TTS voice
 # ─────────────────────────────────────────────────────────────
 
-import subprocess, sys, os, json, asyncio, shutil
+import subprocess, sys, os, json, shutil
 from pathlib import Path
 
 os.environ['HF_HOME'] = '/kaggle/working/hf_cache'
@@ -32,7 +32,6 @@ subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', 'diffusers'
 subprocess.check_call(['apt-get', 'install', '-qq', 'ffmpeg'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 import torch
-import edge_tts
 from diffusers import DiffusionPipeline
 from PIL import Image
 
@@ -118,20 +117,20 @@ if ENABLE_MOTION:
     torch.cuda.empty_cache()
     print(f"{len(vid_paths)} clips done!")
 
-# ─── TTS NARRATION (Edge-TTS) ────────────────────────────────
+# ─── TTS NARRATION (Edge-TTS CLI, no async needed) ────────────
 print("\n--- Generating Narration ---")
-async def gen_tts():
-    os.makedirs(f"{OUT}/audio", exist_ok=True)
-    paths = []
-    for s in scenes:
-        out = f"{OUT}/audio/scene_{s['id']:02d}.mp3"
-        await edge_tts.Communicate(s["narration"], VOICE).save(out)
-        paths.append(out)
-    return paths
-try:
-    audio_paths = asyncio.get_running_loop().run_until_complete(gen_tts())
-except RuntimeError:
-    audio_paths = asyncio.run(gen_tts())
+os.makedirs(f"{OUT}/audio", exist_ok=True)
+audio_paths = []
+for s in scenes:
+    out = f"{OUT}/audio/scene_{s['id']:02d}.mp3"
+    print(f"  TTS: Scene {s['id']}...")
+    subprocess.run([
+        'edge-tts',
+        '--text', s['narration'],
+        '--voice', VOICE,
+        '--write-media', out
+    ], check=True, capture_output=True)
+    audio_paths.append(out)
 print(f"{len(audio_paths)} audio files done!")
 
 # ─── ASSEMBLY (FFmpeg) ──────────────────────────────────────
