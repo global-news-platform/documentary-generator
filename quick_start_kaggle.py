@@ -124,12 +124,8 @@ audio_paths = []
 for s in scenes:
     out = f"{OUT}/audio/scene_{s['id']:02d}.mp3"
     print(f"  TTS: Scene {s['id']}...")
-    subprocess.run([
-        'edge-tts',
-        '--text', s['narration'],
-        '--voice', VOICE,
-        '--write-media', out
-    ], check=True, capture_output=True)
+    subprocess.run(['edge-tts', '--text', s['narration'], '--voice', VOICE, '--write-media', out],
+                   check=True)
     audio_paths.append(out)
 print(f"{len(audio_paths)} audio files done!")
 
@@ -144,12 +140,12 @@ for i in range(NUM_SCENES):
     out = f"{OUT}/temp/seg_{i:03d}.mp4"
     if ENABLE_MOTION:
         subprocess.run(["ffmpeg","-y","-i",img,"-i",aud,"-c:v","copy","-c:a","aac","-shortest",out],
-                       check=True, capture_output=True)
+                       check=True)
     else:
         subprocess.run(["ffmpeg","-y","-loop","1","-i",img,"-i",aud,"-c:v","libx264","-t",str(dur),
             "-pix_fmt","yuv420p",
             "-vf",f"scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=decrease,pad={WIDTH}:{HEIGHT}:(ow-iw)/2:(oh-ih)/2,zoompan=z='min(zoom+0.0005,1.02)':d={int(dur*fps)}:s={WIDTH}x{HEIGHT}:fps={fps}",
-            "-c:a","aac","-shortest","-crf","18","-preset","fast",out], check=True, capture_output=True)
+            "-c:a","aac","-shortest","-crf","18","-preset","fast",out], check=True)
     segs.append(out)
     print(f"  Segment {i+1}/{NUM_SCENES}")
 
@@ -172,17 +168,17 @@ for card_name, lines in [("title", [(TOPIC, 48, "#FFFFFF"), ("A Documentary", 24
     dur = 5 if card_name == "title" else 4
     subprocess.run(["ffmpeg","-y","-loop","1","-i",f"{OUT}/temp/{card_name}.png",
         "-c:v","libx264","-t",str(dur),"-pix_fmt","yuv420p","-crf","18","-preset","fast",
-        f"{OUT}/temp/{card_name}.mp4"], check=True, capture_output=True)
+        f"{OUT}/temp/{card_name}.mp4"], check=True)
 
 # Concat
 with open(f"{OUT}/temp/concat.txt","w") as f:
     for seg in [f"{OUT}/temp/title.mp4"] + segs + [f"{OUT}/temp/outro.mp4"]:
-        f.write(f"file '{Path(seg).resolve().as_posix()}'\\n")
+        f.write(f"file '{Path(seg).resolve().as_posix()}'\n")
 
 final = f"{OUT}/final/documentary.mp4"
 subprocess.run(["ffmpeg","-y","-f","concat","-safe","0","-i",f"{OUT}/temp/concat.txt",
     "-c:v","libx264","-c:a","aac","-pix_fmt","yuv420p","-crf","18","-preset","medium","-movflags","+faststart",final],
-    check=True, capture_output=True)
+    check=True)
 
 size_mb = os.path.getsize(final) / 1e6
 print(f"\\n{'='*50}")
