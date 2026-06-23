@@ -27,9 +27,9 @@ os.environ['HF_HUB_ENABLE_HF_TRANSFER'] = '1'
 OUT = '/kaggle/working/output'
 
 # Install deps
-!pip install -q torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
-!pip install -q diffusers transformers accelerate safetensors pillow edge-tts imageio[ffmpeg] soundfile
-!apt-get install -qq ffmpeg 2>/dev/null
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', 'torch', 'torchvision', 'torchaudio', '--index-url', 'https://download.pytorch.org/whl/cu124'])
+subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-q', 'diffusers', 'transformers', 'accelerate', 'safetensors', 'pillow', 'edge-tts', 'imageio[ffmpeg]', 'soundfile'])
+subprocess.check_call(['apt-get', 'install', '-qq', 'ffmpeg'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 import torch
 import edge_tts
