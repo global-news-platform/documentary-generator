@@ -148,30 +148,19 @@ def make_card(texts, filename, dur):
 title_mp4 = make_card([(TOPIC, True, (220,220,240)), ("A Documentary", False, (140,140,160))], "title", 5)
 outro_mp4 = make_card([("Thanks for Watching", True, (220,220,240)), ("Created with Open Source AI", False, (120,120,140))], "outro", 4)
 
-# 4c. Crossfade between all clips using pairwise xfade
+# 4c. Simple concat (reliable)
 all_clips = [title_mp4] + seg_paths + [outro_mp4]
-xfade_dur = 0.8
+concat_file = f"{OUT}/temp/concat.txt"
+with open(concat_file, "w") as f:
+    for clip in all_clips:
+        f.write(f"file '{Path(clip).resolve().as_posix()}'\n")
 
-current = all_clips[0]
-for i in range(1, len(all_clips)):
-    nxt = all_clips[i]
-    out = f"{OUT}/temp/xfade_{i:03d}.mp4"
-    # Get duration of current composite
-    r = subprocess.run(["ffprobe","-v","error","-show_entries","format=duration",
-        "-of","default=noprint_wrappers=1:nokey=1",current],
-        capture_output=True, text=True)
-    cur_dur = float(r.stdout.strip())
-    offset = cur_dur - xfade_dur
-    subprocess.run(["ffmpeg","-y","-i",current,"-i",nxt,
-        "-filter_complex",
-        f"[0:v][0:a][1:v][1:a]xfade=transition=fade:duration={xfade_dur}:offset={offset}[v];[0:a][1:a]acrossfade=d={xfade_dur}[a]",
-        "-map","[v]","-map","[a]",
-        "-c:v","libx264","-c:a","aac","-pix_fmt","yuv420p","-crf","16","-preset","medium",
-        "-shortest",out], check=True)
-    current = out
-    print(f"  Crossfade {i}/{len(all_clips)-1}")
+current = f"{OUT}/temp/raw_combined.mp4"
+subprocess.run(["ffmpeg","-y","-f","concat","-safe","0","-i",concat_file,
+    "-c:v","libx264","-c:a","aac","-pix_fmt","yuv420p",
+    "-crf","16","-preset","medium",current], check=True)
 
-total_dur = sum(s['dur'] for s in scenes) + 5 + 4 - (len(all_clips)-1)*xfade_dur
+total_dur = sum(s['dur'] for s in scenes) + 5 + 4
 
 # 4d. Ambient background music
 ambient = f"{OUT}/temp/ambient.wav"
