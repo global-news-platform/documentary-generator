@@ -139,7 +139,9 @@ def make_card(texts, filename, dur):
     p = f"{OUT}/temp/{filename}.png"
     img.save(p)
     m = f"{OUT}/temp/{filename}.mp4"
-    subprocess.run(["ffmpeg","-y","-loop","1","-i",p,"-c:v","libx264","-t",str(dur),
+    subprocess.run(["ffmpeg","-y","-loop","1","-i",p,
+        "-f","lavfi","-i","anullsrc=r=44100:cl=mono",
+        "-c:v","libx264","-c:a","aac","-t",str(dur),"-shortest",
         "-pix_fmt","yuv420p","-crf","16","-preset","fast",m], check=True)
     return m
 
@@ -164,7 +166,8 @@ for i in range(1, len(all_clips)):
         "-filter_complex",
         f"[0:v][0:a][1:v][1:a]xfade=transition=fade:duration={xfade_dur}:offset={offset}[v];[0:a][1:a]acrossfade=d={xfade_dur}[a]",
         "-map","[v]","-map","[a]",
-        "-c:v","libx264","-c:a","aac","-pix_fmt","yuv420p","-crf","16","-preset","medium",out], check=True)
+        "-c:v","libx264","-c:a","aac","-pix_fmt","yuv420p","-crf","16","-preset","medium",
+        "-shortest",out], check=True)
     current = out
     print(f"  Crossfade {i}/{len(all_clips)-1}")
 
