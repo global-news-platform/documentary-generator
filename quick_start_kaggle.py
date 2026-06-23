@@ -128,7 +128,7 @@ async def gen_tts():
         await edge_tts.Communicate(s["narration"], VOICE).save(out)
         paths.append(out)
     return paths
-audio_paths = await gen_tts()
+audio_paths = asyncio.run(gen_tts())
 print(f"{len(audio_paths)} audio files done!")
 
 # ─── ASSEMBLY (FFmpeg) ──────────────────────────────────────
