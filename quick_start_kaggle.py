@@ -153,16 +153,26 @@ for i in range(NUM_SCENES):
     segs.append(out)
     print(f"  Segment {i+1}/{NUM_SCENES}")
 
-# Title card
-font = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-subprocess.run(["ffmpeg","-y","-f","lavfi","-i",
-    f"color=c=#0a0a0a:s={res}:d=5:r={fps},drawtext=text='{TOPIC}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=(h-text_h)/2-30:fontfile={font},drawtext=text='A Documentary':fontcolor=#AAAAAA:fontsize=24:x=(w-text_w)/2:y=(h-text_h)/2+30:fontfile={font}",
-    "-c:v","libx264","-pix_fmt","yuv420p","-preset","fast","-crf","18", f"{OUT}/temp/title.mp4"],
-    check=True, capture_output=True)
-subprocess.run(["ffmpeg","-y","-f","lavfi","-i",
-    f"color=c=#0a0a0a:s={res}:d=4:r={fps},drawtext=text='Thanks for Watching':fontcolor=white:fontsize=42:x=(w-text_w)/2:y=(h-text_h)/2-20:fontfile={font},drawtext=text='Created with Open Source AI':fontcolor=#888888:fontsize=20:x=(w-text_w)/2:y=(h-text_h)/2+30:fontfile={font}",
-    "-c:v","libx264","-pix_fmt","yuv420p","-preset","fast","-crf","18", f"{OUT}/temp/outro.mp4"],
-    check=True, capture_output=True)
+# Title card and outro as images (avoid drawtext font issues)
+from PIL import Image, ImageDraw, ImageFont
+for card_name, lines in [("title", [(TOPIC, 48, "#FFFFFF"), ("A Documentary", 24, "#AAAAAA")]),
+                          ("outro", [("Thanks for Watching", 42, "#FFFFFF"), ("Created with Open Source AI", 20, "#888888")])]:
+    img = Image.new("RGB", (WIDTH, HEIGHT), "#0a0a0a")
+    draw = ImageDraw.Draw(img)
+    for text, size, color in lines:
+        try:
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size)
+        except:
+            font = ImageFont.load_default()
+        bbox = draw.textbbox((0, 0), text, font=font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        draw.text(((WIDTH - tw) // 2, (HEIGHT - th) // 2 - 20 + lines.index((text, size, color)) * 50),
+                  text, font=font, fill=color)
+    img.save(f"{OUT}/temp/{card_name}.png")
+    dur = 5 if card_name == "title" else 4
+    subprocess.run(["ffmpeg","-y","-loop","1","-i",f"{OUT}/temp/{card_name}.png",
+        "-c:v","libx264","-t",str(dur),"-pix_fmt","yuv420p","-crf","18","-preset","fast",
+        f"{OUT}/temp/{card_name}.mp4"], check=True, capture_output=True)
 
 # Concat
 with open(f"{OUT}/temp/concat.txt","w") as f:
