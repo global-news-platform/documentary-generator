@@ -6,7 +6,7 @@ Paste into Kaggle cell. Settings → GPU T4 x2, Internet → On
 # ═══════ CONFIG ═══════
 TOPIC = "The Higgs Field: Why Matter Has Mass"
 NUM_SCENES = 15                    # 15 scenes ≈ 8-10 min, 20 scenes ≈ 12-14 min
-WIDTH, HEIGHT = 1024, 576
+WIDTH, HEIGHT = 1280, 720                   # Native 720p generation
 VOICE = "en-US-GuyNeural"
 GEMINI_KEY = ""                    # Optional: get free key at aistudio.google.com
 # ═══════════════════════
@@ -134,7 +134,8 @@ pipe = DiffusionPipeline.from_pretrained(
 pipe.scheduler = EulerAncestralDiscreteScheduler.from_config(pipe.scheduler.config)
 if device == "cuda": pipe.enable_model_cpu_offload()
 pipe.enable_vae_slicing()
-neg = "blurry, low quality, distorted, ugly, deformed, text, watermark, signature, logo, bad anatomy, cropped, bad proportions"
+if device == "cuda": pipe.enable_vae_tiling()
+neg = "blurry, low quality, distorted, ugly, deformed, text, watermark, signature, logo, bad anatomy, cropped, bad proportions, lowres,丑陋, deformed, bad shadow"
 os.makedirs(f"{OUT}/images", exist_ok=True)
 img_paths = []
 for s in scenes:
@@ -142,7 +143,7 @@ for s in scenes:
     print(f"  [{s['id']}/{len(scenes)}] {s['title']}...", end=" ", flush=True)
     pipe(prompt=s['prompt'], negative_prompt=neg,
          width=WIDTH, height=HEIGHT,
-         num_inference_steps=35, guidance_scale=7.5).images[0].save(out, quality=98)
+         num_inference_steps=40, guidance_scale=7.5).images[0].save(out, quality=98)
     img_paths.append(out)
     print("OK")
 del pipe
@@ -246,7 +247,10 @@ subprocess.run(["ffmpeg","-y","-i",raw_video,"-i",ambient,
     "-filter_complex","[1:a]volume=0.06[a1];[0:a][a1]amix=inputs=2:duration=first:weights=1 0.3[aout]",
     "-map","0:v","-map","[aout]",
     "-c:v","libx264","-c:a","aac",
-    "-pix_fmt","yuv420p","-crf","14","-preset","medium",
+    "-vf","scale=1920:1080:flags=lanczos",
+    "-pix_fmt","yuv420p","-crf","12","-preset","slow",
+    "-profile:v","high","-level","4.1",
+    "-b:a","192k",
     "-movflags","+faststart",
     final_video], check=True)
 
@@ -266,7 +270,7 @@ print(f"FINAL VIDEO: {final_video}")
 print(f"Size: {size_mb:.1f} MB  |  Duration: {hours}h {mins}m {secs}s")
 if vstreams: print(f"Video: {vstreams[0].get('codec_name','?')} {vstreams[0].get('width','?')}x{vstreams[0].get('height','?')}")
 if astreams: print(f"Audio: {astreams[0].get('codec_name','?')}")
-print(f"Scenes: {len(scenes)}  |  Resolution: {WIDTH}x{HEIGHT}")
+print(f"Scenes: {len(scenes)}  |  Gen: {WIDTH}x{HEIGHT}  |  Output: 1920x1080")
 print(f"{'='*55}")
 print()
 print("File ready! To download:")
