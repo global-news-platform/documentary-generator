@@ -240,12 +240,13 @@ subprocess.run(["ffmpeg","-y",
     "-filter_complex","[0][1]amix=inputs=2:duration=first[low];[low][2]amix=inputs=2:duration=first",
     "-t",str(total_dur),ambient], check=True, capture_output=True)
 
-# 4e. Mix narration + music
+# 4e. Mix narration + music (re-encode video for compatibility)
 final_video = f"{OUT}/final/documentary.mp4"
 subprocess.run(["ffmpeg","-y","-i",raw_video,"-i",ambient,
     "-filter_complex","[1:a]volume=0.06[a1];[0:a][a1]amix=inputs=2:duration=first:weights=1 0.3[aout]",
     "-map","0:v","-map","[aout]",
-    "-c:v","copy","-c:a","aac",
+    "-c:v","libx264","-c:a","aac",
+    "-pix_fmt","yuv420p","-crf","14","-preset","medium",
     "-movflags","+faststart",
     final_video], check=True)
 
@@ -253,13 +254,29 @@ size_mb = os.path.getsize(final_video)/1e6
 hours = int(total_dur // 3600)
 mins = int((total_dur % 3600) // 60)
 secs = int(total_dur % 60)
+
+# Diagnostic
+r = subprocess.run(["ffprobe","-v","error","-show_entries","format=duration,size:stream=codec_type,codec_name,width,height",
+    "-of","json",final_video], capture_output=True, text=True)
+info = json.loads(r.stdout) if r.stdout else {}
+vstreams = [s for s in info.get('streams',[]) if s.get('codec_type')=='video']
+astreams = [s for s in info.get('streams',[]) if s.get('codec_type')=='audio']
 print(f"\n{'='*55}")
 print(f"FINAL VIDEO: {final_video}")
 print(f"Size: {size_mb:.1f} MB  |  Duration: {hours}h {mins}m {secs}s")
-print(f"Resolution: {WIDTH}x{HEIGHT}  |  SDXL 35 steps  |  Euler scheduler")
-print(f"Scenes: {len(scenes)}  |  CRF 14 (high quality)")
-print(f"Ken Burns zoompan + cinematic ambient music")
+if vstreams: print(f"Video: {vstreams[0].get('codec_name','?')} {vstreams[0].get('width','?')}x{vstreams[0].get('height','?')}")
+if astreams: print(f"Audio: {astreams[0].get('codec_name','?')}")
+print(f"Scenes: {len(scenes)}  |  Resolution: {WIDTH}x{HEIGHT}")
 print(f"{'='*55}")
+print()
+print("File ready! To download:")
+print(f"  Kaggle sidebar → File → {final_video} → Download")
+print(f"Or run the zip cell below.")
 
-from IPython.display import Video
-Video(final_video, embed=True, width=800)
+from IPython.display import HTML, display
+display(HTML(f'<video width="800" controls><source src="/kaggle/working/output/final/documentary.mp4" type="video/mp4">Your browser does not support the video tag.</video>'))
+
+# Zip for download
+zip_path = "/kaggle/working/documentary_output.zip"
+shutil.make_archive(zip_path.replace('.zip',''), 'zip', f"{OUT}/final")
+print(f"\nZip: {zip_path} ({os.path.getsize(zip_path)/1e6:.1f} MB)")
